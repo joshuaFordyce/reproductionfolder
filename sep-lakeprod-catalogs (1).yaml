@@ -1,0 +1,297 @@
+---
+catalogs:
+  tpcds: |
+    connector.name=tpcds
+  tpch: |
+    connector.name=tpch
+  bdc_glue: |
+    connector.name=hive
+    hive.metastore=glue
+    hive.metastore-cache-ttl=720m
+    hive.metastore-cache-maximum-size=100000
+    hive.file-status-cache-expire-time=720m
+    hive.file-status-cache.max-retained-size=1GB
+    hive.security=starburst
+    hive.non-managed-table-writes-enabled=true
+    hive.non-managed-table-creates-enabled=true
+    hive.max-partitions-per-writers=15000
+    hive.metastore-refresh-interval=15m
+    hive.metastore.glue.default-warehouse-dir=s3://datalake-userdata-lakeprod-us-west-2-421065053245/starburst/
+    hive.storage-format=PARQUET
+    # hive.s3.security-mapping.config-file=secretRef:vars-deployment:HiveSecurityMappingFile
+    # materialized-views.enabled=true
+    # materialized-views.namespace=hive_views
+    # materialized-views.storage-schema=views_cache_storage
+    # redirection.config-source=SERVICE
+    # cache-service.uri=http://coordinator:8180
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.socket-read-timeout=2m
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    # hive.s3.socket-timeout=2m
+    # hive.s3.sse.enabled=true
+    # hive.s3.sse.type=KMS
+    # hive.s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    hive.iceberg-catalog-name=bdc_lakehouse
+    hive.insert-existing-partitions-behavior=OVERWRITE
+    hive.hive-views.run-as-invoker=true
+    hive.recursive-directories=true
+  divvy_snowflake: |
+    connector.name=snowflake_parallel
+    connection-url=jdbc:snowflake://${ENV:SnowflakeHost}/?useProxy=true&proxyHost=proxy.local&proxyPort=3128&insecureMode=true
+    connection-user=${ENV:SnowflakeUser}
+    connection-password=${ENV:SnowflakePwd}
+    snowflake.warehouse=STARBURST_WH
+    snowflake.role=STARBURST_ROLE
+    snowflake.database=DATA_WAREHOUSE
+    join-pushdown.enabled=true
+    # managed-statistics.enabled=true
+    # metadata.cache-ttl=720m
+  divvy_snowflake_pii: |
+    connector.name=snowflake_parallel
+    connection-url=jdbc:snowflake://${ENV:SnowflakeHost}/?useProxy=true&proxyHost=proxy.local&proxyPort=3128&insecureMode=true
+    connection-user=${ENV:SnowflakeUser}
+    connection-password=${ENV:SnowflakePwd}
+    snowflake.warehouse=STARBURST_WH
+    snowflake.role=PII_ROLE
+    snowflake.database=DATA_WAREHOUSE
+    join-pushdown.enabled=true
+    # managed-statistics.enabled=true
+    # metadata.cache-ttl=720m
+  divvy_snowflake_jdbc: |
+    connector.name=snowflake_jdbc
+    connection-url=jdbc:snowflake://${ENV:SnowflakeHost}/?useProxy=true&proxyHost=proxy.local&proxyPort=3128&insecureMode=true
+    connection-user=${ENV:SnowflakeUser}
+    connection-password=${ENV:SnowflakePwd}
+    snowflake.warehouse=STARBURST_WH
+    snowflake.role=STARBURST_ROLE
+    snowflake.database=DATA_WAREHOUSE
+    join-pushdown.enabled=true
+  # divvy_snowflake_distributed: |
+  #   connector.name=snowflake_distributed
+  #   connection-url=jdbc:snowflake://${ENV:SnowflakeHost}/?useProxy=true&proxyHost=proxy.local&proxyPort=3128&insecureMode=true
+  #   connection-user=${ENV:SnowflakeUser}
+  #   connection-password=${ENV:SnowflakePwd}
+  #   snowflake.warehouse=STARBURST_WH
+  #   snowflake.role=STARBURST_ROLE
+  #   snowflake.stage-schema=stage_starburst
+  #   snowflake.database=data_warehouse
+  #   join-pushdown.enabled=true
+  #   # managed-statistics.enabled=true
+  # divvy_snowflake_pii_distributed: |
+  #   connector.name=snowflake_distributed
+  #   connection-url=jdbc:snowflake://${ENV:SnowflakeHost}/?useProxy=true&proxyHost=proxy.local&proxyPort=3128&insecureMode=true
+  #   connection-user=${ENV:SnowflakeUser}
+  #   connection-password=${ENV:SnowflakePwd}
+  #   snowflake.warehouse=STARBURST_WH
+  #   snowflake.role=PII_ROLE
+  #   snowflake.stage-schema=stage_starburst
+  #   snowflake.database=data_warehouse
+  #   join-pushdown.enabled=true
+  #   # managed-statistics.enabled=true
+  bdc_lakehouse: |
+    connector.name=iceberg
+    iceberg.catalog.type=glue
+    iceberg.hive-catalog-name=bdc_glue
+    iceberg.file-format=PARQUET
+    iceberg.security=system
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    # hive.s3.sse.enabled=true
+    # hive.s3.sse.type=KMS
+    # hive.s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+  bdc_iceberg: |
+    connector.name=iceberg
+    iceberg.catalog.type=glue
+    iceberg.hive-catalog-name=bdc_glue
+    iceberg.file-format=PARQUET
+    iceberg.security=system
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    # hive.s3.sse.enabled=true
+    # hive.s3.sse.type=KMS
+    # hive.s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+  bdc_redshift: |
+    connector.name=redshift
+    connection-url=jdbc:redshift://${ENV:BDCRedshiftHost}:5439/bdc_dw?ssl=true
+    connection-user=${ENV:BDCRedshiftUser}
+    connection-password=${ENV:BDCRedshiftPwd}
+    insert.non-transactional-insert.enabled=true
+    write.batch-size=10000
+    # redirection.config-source=SERVICE
+    # cache-service.uri=http://coordinator:8180
+    # managed-statistics.enabled=true
+    # metadata.cache-ttl=720m
+    redshift.impersonation.enabled=true
+    auth-to-local.config-file=secretRef:impersonation-translation-rules:translation_rules.json
+    auth-to-local.refresh-period=10m
+  bdc_redshift_preprod: |
+    connector.name=redshift
+    connection-url=jdbc:redshift://${ENV:BDCRedshiftServerlessHost}:5439/bdc_dw?ssl=true
+    connection-user=${ENV:BDCRedshiftServerlessUser}
+    connection-password=${ENV:BDCRedshiftServerlessPwd}
+    insert.non-transactional-insert.enabled=true
+    write.batch-size=10000
+    # redirection.config-source=SERVICE
+    # cache-service.uri=http://coordinator:8180
+    # managed-statistics.enabled=true
+    #metadata.cache-ttl=720m
+    redshift.impersonation.enabled=true
+    auth-to-local.config-file=secretRef:serverless-impersonation-translation-rules:translation_rules.json
+    auth-to-local.refresh-period=10m
+  bdc_redshift_impersonation: |
+    connector.name=redshift
+    connection-url=jdbc:redshift://${ENV:BDCRedshiftHost}:5439/bdc_dw?ssl=true
+    connection-user=${ENV:BDCRedshiftUser}
+    connection-password=${ENV:BDCRedshiftPwd}
+    insert.non-transactional-insert.enabled=true
+    write.batch-size=10000
+    # redirection.config-source=SERVICE
+    # cache-service.uri=http://coordinator:8180
+    # managed-statistics.enabled=true
+    #metadata.cache-ttl=720m
+    redshift.impersonation.enabled=true
+    auth-to-local.config-file=secretRef:impersonation-translation-rules:translation_rules.json
+    auth-to-local.refresh-period=10m
+  # bdc_redshift_mimic: |
+  #   connector.name=redshift
+  #   connection-url=jdbc:redshift://${ENV:BDCRedshiftHost}:5439/bdc_dw?ssl=true
+  #   connection-user=${ENV:BDCRedshiftUser}
+  #   connection-password=${ENV:BDCRedshiftPwd}
+  #   insert.non-transactional-insert.enabled=true
+  #   write.batch-size=10000
+  #   #redirection.config-source=SERVICE
+  #   #cache-service.uri=http://coordinator:8180
+  #   # managed-statistics.enabled=true
+  #   #metadata.cache-ttl=720m
+  #   redshift.impersonation.enabled=true
+  #   auth-to-local.config-file=secretRef:impersonation-translation-rules:translation_rules.json
+  #   auth-to-local.refresh-period=10m
+  # bdc_edwh_mimic: |
+  #   connector.name=iceberg
+  #   iceberg.catalog.type=glue
+  #   iceberg.hive-catalog-name=bdc_glue
+  #   iceberg.file-format=PARQUET
+  #   iceberg.security=system
+  #   fs.hadoop.enabled=false
+  #   fs.native-s3.enabled=true
+  #   s3.sse.type=KMS
+  #   s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/622bd75f-80bf-425f-a233-76b3286f6bfa
+  i2g_redshift: |
+    connector.name=redshift
+    connection-url=jdbc:redshift://${ENV:I2GRedshiftHost}:5439/cloud2go?ssl=true
+    connection-user=${ENV:I2GRedshiftUser}
+    connection-password=${ENV:I2GRedshiftPwd}
+    #redirection.config-source=SERVICE
+    #cache-service.uri=http://coordinator:8180
+    # managed-statistics.enabled=true
+  starburst_metadb: |
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://${ENV:InsightsJDBCHostName}:5432/eks_event_logger
+    connection-user=${ENV:InsightsROJDBCUserName}
+    connection-password=${ENV:InsightsROJDBCPwd}
+  starburst_metadb_admin: |
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://${ENV:InsightsJDBCHostName}:5432/eks_event_logger
+    connection-user=${ENV:InsightsJDBCUserName}
+    connection-password=${ENV:InsightsJDBCPwd}
+  finmark: |
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://${ENV:FinmarkJDBCHostName}:5432/finmark
+    connection-user=${ENV:FinmarkJDBCUserName}
+    connection-password=${ENV:FinmarkJDBCPwd}
+    unsupported-type-handling=CONVERT_TO_VARCHAR
+  jmx: |
+    connector.name=jmx
+  infosec: |
+    connector.name=hive
+    hive.metastore=glue
+    hive.metastore.glue.catalogid=728411576351
+    #hive.s3.iam-role=arn:aws:iam::421065053245:role/DataPlatformStarburstPodRoleV27
+    hive.metastore-cache-ttl=720m
+    hive.metastore-cache-maximum-size=100000
+    hive.file-status-cache-expire-time=720m
+    hive.file-status-cache.max-retained-size=1GB
+    hive.security=starburst
+    hive.non-managed-table-writes-enabled=true
+    hive.non-managed-table-creates-enabled=true
+    hive.max-partitions-per-writers=15000
+    hive.metastore-refresh-interval=15m
+    hive.metastore.glue.default-warehouse-dir=s3://datalake-userdata-lakeprod-us-west-2-421065053245/starburst/
+    hive.storage-format=PARQUET
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.socket-read-timeout=2m
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    # hive.s3.socket-timeout=2m
+    # hive.s3.sse.enabled=true
+    # hive.s3.sse.type=KMS
+    # hive.s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665
+    hive.insert-existing-partitions-behavior=OVERWRITE
+    hive.hive-views.run-as-invoker=true
+    hive.recursive-directories=true
+  redshift_jdbc: |
+    connector.name=generic-jdbc
+    generic-jdbc.driver-class=com.amazon.redshift.jdbc.Driver
+    connection-url=jdbc:redshift://${ENV:BDCRedshiftHost}:5439/bdc_dw?ssl=true
+    connection-user=${ENV:BDCRedshiftUser}
+    connection-password=${ENV:BDCRedshiftPwd}
+    write.batch-size=10000
+    dynamic-filtering.enabled=true
+    #redirection.config-source=SERVICE
+    #cache-service.uri=http://coordinator:8180
+  enterprise_prod: |
+    connector.name=iceberg
+    iceberg.catalog.type=glue
+    iceberg.hive-catalog-name=bdc_glue
+    iceberg.file-format=PARQUET
+    iceberg.security=system
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/622bd75f-80bf-425f-a233-76b3286f6bfa
+  enterprise_preprod: |
+    connector.name=iceberg
+    iceberg.catalog.type=glue
+    iceberg.hive-catalog-name=bdc_glue
+    iceberg.file-format=PARQUET
+    iceberg.security=system
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/622bd75f-80bf-425f-a233-76b3286f6bfa
+  event_tracking: |
+    connector.name=redshift
+    connection-url=jdbc:redshift://${ENV:BDCRedshiftHost}:5439/bdc_dw?ssl=true
+    connection-user=${ENV:BDCRedshiftUser}
+    connection-password=${ENV:BDCRedshiftPwd}
+    insert.non-transactional-insert.enabled=true
+    write.batch-size=10000
+    # redirection.config-source=SERVICE
+    # cache-service.uri=http://coordinator:8180
+    # managed-statistics.enabled=true
+    # metadata.cache-ttl=720m
+    redshift.impersonation.enabled=true
+    auth-to-local.config-file=secretRef:impersonation-translation-rules:translation_rules.json
+    auth-to-local.refresh-period=10m
+  ai_featurestore: |
+    connector.name=iceberg
+    iceberg.catalog.type=glue
+    iceberg.hive-catalog-name=bdc_glue
+    iceberg.file-format=PARQUET
+    iceberg.security=system
+    hive.metastore.glue.catalogid=862833184810
+    hive.metastore.glue.default-warehouse-dir=s3://datalake-userdata-lakeprod-us-west-2-421065053245/starburst/
+    #hive.s3.sse.enabled=true
+    fs.hadoop.enabled=false
+    fs.native-s3.enabled=true
+    #s3.sse.type=KMS
+    s3.socket-read-timeout=2m
+    s3.region=us-west-2
+    s3.sse.type=KMS
+    s3.sse.kms-key-id=arn:aws:kms:us-west-2:421065053245:key/21da6b46-b616-4543-8339-c15e5b9ca665

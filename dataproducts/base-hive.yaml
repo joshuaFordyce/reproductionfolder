@@ -1,0 +1,70 @@
+# 1. Replace <your_dbs_endpoint> with your RDS instance endpoint 
+#    (AWS ex. kyle-payne-bootcamp.cs8j7iukogcy.us-east-2.rds.amazonaws.com)
+#    (Azure ex. kyle-payne-bootcamp.postgres.database.azure.com)
+# 2. If you are working on labs in Azure then replace <abfs-account> with your blog storage account.
+#    (Azure ex. kylepaynelab01stg)
+# 3. If you are working on labs in Azure then replace <abfs-key> with your blog storage accounts access key.
+#    (Azure ex. VEys9BSb2BLAHV/DU4QRfQYxaGpHkJye9MUFAKENOTREAL0StSsX25J6qsfw+80JWBLAHnOww0tZWb930itLLA==)
+# 4. If youa re working on the labs in Azure then scroll down to the bottom to alter the comments in the
+#    objectStorage section.
+
+# This affinity will ensure hive is deployed in the base node group.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: apps
+          operator: In
+          values: 
+          - base
+
+# The tollerance in this YAML is specifically for Azure so it could be removed or commented out
+#    for other clouds. However, it also won't hurt to leave since it is just saying to allow somethign
+#    if a taint exists and when it doesn't the tollerance does nothing.
+tolerations:
+  - key: "kubernetes.azure.com/scalesetpriority"
+    operator: "Equal"
+    value: "spot"
+    effect: "NoSchedule"
+
+database:
+  external:
+    driver: org.postgresql.Driver
+    jdbcUrl: jdbc:postgresql://joshua-fordyce-bootcamp.cs8j7iukogcy.us-east-2.rds.amazonaws.com:5432/eks_hms
+    user: postgres
+    password: StarburstR0cks!
+  type: external
+
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: 0.25
+  limits:
+    memory: "1Gi"
+    cpu: 1
+
+# The following is for objetstorage section is for AWS
+# If you are running in Azure then comment it out.
+objectStorage:
+  awsS3:
+    region: "us-east-2"
+    endpoint: "s3.us-east-2.amazonaws.com"
+    pathStyleAccess: true
+    accessKey: "ASIAWAI3RINJOJ54NHXD"
+    secretKey: "4eMqKqb9kEymHWRgULyEW9m5EnGh0agkgM4IZ+pp"
+
+# The following is for objetstorage section is for Azure
+# If you are running in Azure then remove the comments.
+#objectStorage:
+#  azure:
+#    abfs:
+#      authType: "accessKey"
+#      accessKey:
+#        storageAccount: <abfs-account>
+#        accessKey: <abfs-key>
+#      authType: oauth
+#      oauth:
+#        endpoint: <oauth-endpoint>
+#        clientId: <oauth-client-id>
+#        secret: <oauth-secret>

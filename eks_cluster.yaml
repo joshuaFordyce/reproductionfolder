@@ -1,0 +1,132 @@
+# 1. Find and Replace <your-name> with your name seperated with a dash (ex. kyle-payne).
+# 2. Find and Replace <your-org> with your org (ex. cs | sales | enablement | partner).
+# 3. Find and Replace <your-team> with your team (ex. tam |  cse | sa | partner | edu).
+# 4. Find and Replace <bootcamp-month> with the current month (ex. December).
+# 5. Find and Replace <bootcamp-year> with the current year (ex. 2021).
+# 6. Find and Replace <your-tag-name> with you own name seperated with a period ((ex. kyle.payne).
+# 7. Find and Replace <your-availability-zone> with the az your postgres RDS instanced called <your-name-bootcamp> is in
+#    you will see it listed next to your RDS instnace name in the AWS console (ex us-east-2c).
+# 8. Ensure the subnet IDs in the section vpc: subnet: private: are correct for your VPC.
+#    (Enablement account in us-east-2 just leave as is)
+#    (For eu-west-2 or ap-south-1 you will need to update the ids) 
+# 9. Find and Replace en-field-key with the actual key you want to use if you want to use a different key. 
+#    (Enablement account ex. en-field-key) 
+# 10. Find and Replace 412911485778 with the AWS account you are using if it is different.
+#    (Enablement account ex. 412911485778)
+# 11. Find and Replace s3-eks-glue with the IAM policy you created on binary lab day (ex. kp-s3-eks-glue).
+
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+# This section continas the EKS cluster name, region and the tags to set 
+# on most of the AWS resources it creates. Note, managedNodeGroups are not set by these section.
+# Note if you get an error about not being able to deploy k8s 1.20 then ensre you are running eksctl version 0.54.0 or later.
+metadata:
+  name: joshua-fordyce-lab01
+  region: us-east-2
+  version: "1.29"
+  tags:
+    cloud: aws
+    environment: demo
+    org: enablement
+    team: cse
+    project: "boot camp"
+    info: "December 2024 Boot Camp"
+    user: joshua.fordyce@starburstdata.com
+
+# By specifing the subnet IDs which are unique to all of AWS, AWS will be able to determine the
+# VPC and CIDR (IP) information.
+#
+# It is an SEP best practice to ensure the coordinator and all workers are in the same
+# AWS Availablity Zone (AZ). But AWS requires an EKS cluster to provide two AZs. You can still
+# configure both of the MangedNode Groups to use a single AZ which is what we did in this YAML.
+vpc:
+  subnets:
+     private:
+       us-east-2a:
+         id: subnet-0ba16d518af670462
+       us-east-2b:
+         id: subnet-011342a0c2d61823d
+       us-east-2c:
+         id: subnet-079aebff5aec9ee59
+
+
+# In AWS you can use nodeGroups or managedNodeGroups. My recommendation is managedNodeGroups because
+# of the way things work with an EKS worker is removed from a cluster by SPOT rebalancing.
+# There is more information on this in confluence. Note as a result we must repeat all the tags
+# we want to set in this section.
+#
+# The purpose of the base pool is to have a place to run HMS, Ranger and other non-SEP pods.
+# It will also be forced to a certain AZ which matches onw of the two subnets above.
+managedNodeGroups:
+  - name: base
+    labels:
+      apps: base
+    tags:
+      cloud: aws
+      environment: demo
+      org: enablement
+      team: cse
+      project: "boot camp"
+      info: "December 2024 Boot Camp"
+      user: joshua.fordyce@starburstdata.com
+    availabilityZones: [us-east-2b]
+    spot: true
+    instanceTypes: ["m5.xlarge", "m5a.xlarge", "m5ad.xlarge"]
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 1
+    privateNetworking: true
+    ssh:
+      allow: true
+      publicKeyName: joshuaFordyce
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        externalDNS: true
+        certManager: true
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::412911485778:policy/s3-eks-glue
+  
+  # The purpose of the sep pool is to have a place to run the coordinator and workers
+  - name: sep
+    labels:
+      apps: sep
+    tags:
+      cloud: aws
+      environment: demo
+      org: enablement
+      team: cse
+      project: "boot camp"
+      info: "December 2024 Boot Camp"
+      user: joshua.fordyce@starburstdata.com
+    availabilityZones: [us-east-2b]  
+    spot: true
+    instanceTypes: ["m5.xlarge", "m5a.xlarge", "m5ad.xlarge"]
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 4
+    privateNetworking: true
+    ssh:
+      allow: true
+      publicKeyName: joshuaFordyce
+    #
+    # The first three roles below are EKS requirements. You must have them.
+    # The last role is one we created which allows full access to EKS, SE and Glue in the
+    # account the EKS cluster was built in. Note this won't give you cross account access to Glue.
+    # Because of that last role you don't need to supply IAM credentials in the HMS or catalog configurations
+    # for access to those resources within the same AWS account. However, if you want to access Glue in another
+    # AWS account then you do need to set the credentails for that in the catalog.   
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        externalDNS: true
+        certManager: true
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::412911485778:policy/s3-eks-glue

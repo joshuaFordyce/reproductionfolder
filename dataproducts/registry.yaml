@@ -1,0 +1,5 @@
+registryCredentials:
+  enabled: true
+  registry: harbor.starburstdata.net/starburstdata
+  username: Joshua.fordyce
+  password: d71eB4beees3sB2b

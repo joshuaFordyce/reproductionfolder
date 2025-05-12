@@ -1,0 +1,389 @@
+global:
+  namespace: starburst
+  credsSecret: catalog-creds
+  license: '{"test": "json"}'
+  insightsPsqlUsername: secret
+  insightsPsqlPassword: secret
+  oracleUrl: secret  
+  oracleUsername: secret
+  oraclePassword: secret
+  snowflakeUsername: secret
+  snowflakePassword: secret
+  immutaApiKey: secret
+  immutaEndpoint: secret
+  dataProductUser: secret
+  dataProductPassword: secret
+  abfsoauthClientId: secret
+  abfsoauthSecret: secret
+  abfsoauthEndpoint: secret
+  sharedSecret: secret
+  insightsPsqlURL: secret
+  maskingjava: secret
+  scimSecret: secret
+  dataProdUser: secret
+  dataProdPasswd: secret
+  unityAccessToken: secret
+  unityHost: secret
+  unityCatalogName: secret
+  tableauClientId: secret
+  tableauSecret: secret
+  Oauth2AccessTokenIssuer: secret
+  Oauth2Issuer: secret
+  Oauth2AdditionalAudiences: secret
+  Oauth2Scopes: secret
+  httpsNodePort: 8443
+  #certsB64:
+  #  immuta: secret
+  #  starburst: secret
+  #  starburstKey: secret
+  # labels to be added to every pod
+  podLabels: {}
+  # annotations to be added to every pod
+  podAnnotations:
+    com.illumio.deployment: "starburst"
+    com.illumio.riskscore: "med"
+    com.illumio.data: "internal"
+    com.illumio.namespace: "starburst"
+    com.illumio.postgres: "allow-postgres"
+    com.illumio.farms: "allow-farms"
+    com.illumio.kubeapi: "allow-kubeapi"
+    com.illumio.oracle: "allow-oracle"
+    com.illumio.snowflake: "allow-snowflake"
+  # Specify an image registry. This will be used for all images unless overridden for an individual component.
+  # This value defaults to registry.immuta.com
+  #imageRegistry: xxxxx.azurecr.io
+  #imageRegistry: xxxxx.azurecr.io
+  namespace: starburst
+  starburstCertificateB64: ${ENV:STARBURST_CERTIFICATEB64}
+  starburstKeyB64: ${ENV:STARBURST_KEYB64}
+  certsB64:
+    immuta: secret
+    starburst: ${ENV:STARBURST_CERTIFICATEB64}
+    starburstKey: ${ENV:STARBURST_KEYB64}  
+
+securityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+#starburstPlatformLicense: mylicense
+serviceAccountName: starburst-svc
+internalTls: true
+# query:
+#   maxConcurrentQueries: 3
+#securityContext:
+#  seccompProfile:
+#    type: RuntimeDefault
+#  runAsNonRoot: true
+#  runAsUser: 1000
+# spilling:
+#   enabled: false
+#   volume:
+#     emptyDir: {}
+# starburstEnterpriseInit:
+#   securityContext:
+#     seccompProfile:
+#       type: RuntimeDefault
+#     runAsNonRoot: true
+#     runAsUser: 1000
+
+image:
+  repository: xxxxx.azurecr.io/starburstdata/starburst-enterprise
+  tag: "443-e.7"
+
+initImage:
+  repository: xxxxx.azurecr.io/starburstdata/starburst-enterprise-init
+  tag: "1.5.12"
+
+# licenseManager:
+#   image:
+#     repository: xxxxx.azurecr.io/starburstdata/license-manager
+
+additionalVolumes:
+  - path: /etc/starburst/external-certs
+    volume:
+      configMap:
+        name: external-public-certs
+  - path: /etc/starburst/certs
+    volume:
+      secret:
+        secretName: "oracle-cert"    
+  - path: /etc/starburst/ejroot.der
+    subPath: ejroot.der
+    volume:
+      configMap:
+        name: "ca-cert"
+  - path: /data/starburst
+    volume:
+      emptyDir: {}
+  - path: /tmp
+    volume:
+      emptyDir: {}
+
+# ------------------------------------------------------------------------------
+# Image
+# ------------------------------------------------------------------------------
+
+# image:
+#   repository: "xxxxx.azurecr.io/starburstdata/starburst-enterprise"
+# #  repository: "harbor.starburstdata.net/starburstdata/starburst-enterprise"
+#   tag: "423-e.2"
+#   pullPolicy: "IfNotPresent"
+
+# initImage:
+#   repository: "xxxxx.azurecr.io/starburstdata/starburst-enterprise-init"
+#   tag: "1.5.2"
+  # pullPolicy: "IfNotPresent"
+
+## registryCredentials set access to container images
+registryCredentials:
+  enabled: false
+  # Replace this with Docker Registry that you use
+  registry:
+  username:
+  password:
+
+# Instead of setting registryCredentials you can pass list of secrets, in format:
+# imagePullSecrets:
+#  - name: secret1
+#  - name: secret2
+# Select one method of selecting registryCredentials otherwise you'll receive an error
+imagePullSecrets:
+
+# ------------------------------------------------------------------------------
+# Internal communication
+# ------------------------------------------------------------------------------
+
+# Shared secret for internal communication. Set it to long and unique value.
+# If not set, node.environment value is used from node.properties file.
+sharedSecret: ${ENV:SHARED_SECRET}
+
+# Environment id; used for generating internal communication token if sharedSecret
+#  is not provided. If empty, default value is generated based on Helm release name.
+# environment: dev
+
+# Enable TLS for internal communication and autogenerate trusted certificates
+# Note it works only on SEP >= 360-e and requires 'sharedSecret' and 'environment' to be set
+# internalTls: false
+
+# ------------------------------------------------------------------------------
+# Coordinator service
+# Modelled after https://github.com/goharbor/harbor-helm/blob/55598b1f1ccba2bc1c12e94a2622840cae148eb8/values.yaml#L1
+# ------------------------------------------------------------------------------
+
+expose:
+  # one of: nodePort, clusterIp, loadBalancer, ingress
+  type: "clusterIp"
+  clusterIp:
+    name: "starburst"
+    ports:
+      http:
+        port: 8080
+      https:
+        port: 8443
+#   nodePort:
+#     name: "starburst"
+#     ports:
+#       http:
+#         port: 8080
+#         nodePort: 30080
+#       https:
+#         port: 8443
+#         nodePort: 30443
+#     extraLabels: {}
+#   loadBalancer:
+#     name: "starburst"
+#     IP: ""
+#     ports:
+#       http:
+#         port: 8080
+#       https:
+#         port: 8443
+#     annotations: {}
+#     sourceRanges: []
+
+internal:
+  ports:
+    http:
+      port: 8080
+    https:
+      port: 8443
+
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Init Container
+# ------------------------------------------------------------------------------
+starburstEnterpriseInit:
+  # Add security context at the container level
+  #securityContext:
+  #  seccompProfile:
+  #    type: RuntimeDefault
+  #  runAsNonRoot: true
+  #  readOnlyRootFilesystem: true
+  #  runAsUser: 1000
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    runAsUser: 1000 
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+       - ALL    
+# ------------------------------------------------------------------------------
+# Common Coordinator/Worker Settings
+# ------------------------------------------------------------------------------
+
+#initFile: ""
+initFile: |
+  #!/bin/bash
+  echo "-Djavax.net.ssl.trustStorePassword=${MASKING_JAVA}" >> /etc/starburst/jvm.config
+  # Run startup script
+  exec /usr/lib/starburst/bin/run-starburst
+  # === The following adds a cacert which isn't publicly signed to the cacerts in SEP ===
+  keytool -import -trustcacerts -noprompt -storepass changeit -alias awsad -file /etc/starburst/ejroot.der -keystore /tmp/cacerts
+  echo "-Djavax.net.ssl.trustStore=/tmp/cacerts" >> /etc/starburst/jvm.config
+  echo "-Djavax.net.ssl.trustStorePassword=changeit" >> /etc/starburst/jvm.config
+extraArguments: []
+
+# Below secret will be mounted in /extra-secret/ within containers
+extraSecret:
+  # Replace this with secret name that should be used from namespace you are deploying to
+  name:
+  # Optionally 'file' may be provided which will be deployed as secret with given 'name' in used namespace.
+  file:
+
+# If necessary overwrite the default probe defined in the Deployment definition
+#startupProbe:
+
+# If necessary overwrite the default probe defined in the Deployment definition
+#readinessProbe:
+
+# If necessary overwrite the default probe defined in the Deployment definition
+#livenessProbe:
+
+
+# ------------------------------------------------------------------------------
+# Starburst Warp Speed
+# ------------------------------------------------------------------------------
+warpSpeed:
+  enabled: false
+  # Additional percentage of container memory reduced from heap size assigned to Java, must be less than 100
+  additionalHeapSizePercentage: 15
+  fileSystem:
+    # The path for the mount point used to mount the local SSDs, might differ between cloud vendors
+    # AWS, Azure - Defined by the user
+    # GCP - Needs to be set to  `/mnt/stateful_partition/kube-ephemeral-ssd`
+    localStorageMountPath: /opt/data
+  image:
+    # Image that prepares filesystem for Warp Speed.
+    # Note that due to system limitations this has to be done by init container running in privileged mode
+    repository: "harbor.starburstdata.net/starburstdata/starburst-warpspeed-init"
+    # AWS, GCP - Use default tag
+    # Azure - add `-azure` suffix, ex. 1.0.0-azure
+    tag: "1.0.7"
+    pullPolicy: "IfNotPresent"
+
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Query memory usage control
+# - maxConcurrentQueries - Maximum queries executed in parallel on single node
+# ------------------------------------------------------------------------------
+
+query:
+  maxConcurrentQueries: 3
+
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Disk Spilling
+# Spilling uses internal Node storage(HDD). Mounted within Pod and Container.
+# ------------------------------------------------------------------------------
+
+spilling:
+  enabled: false
+  volume:
+    emptyDir: {}
+
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Caching
+# !!! Warning !!!
+# Currently caching only works with Hive Connector. Future releases will change it.
+# - Enabling caching here will enable it for all Hive connectors.
+# - To enable caching only for specific connector, configure it via catalogs
+#   and additionalVolumes. In such case this feature needs to be disabled.
+# ------------------------------------------------------------------------------
+
+cache:
+  enabled: false
+  diskUsagePercentage: 80
+  ttl: "7d"
+  volume:
+    emptyDir: {}
+
+usageMetrics:
+  enabled: false
+  usageClient:
+    initialDelay: "1m"
+    interval: "1m"
+
+# ------------------------------------------------------------------------------
+# Prometheus JMX exporter
+# ------------------------------------------------------------------------------
+
+prometheus:
+  enabled: false
+  agent:
+    version: "0.20.0"
+    port: 8081
+    config: "/etc/starburst/telemetry/prometheus.yaml"
+  rules:
+    - pattern: trino.execution<name=QueryManager><>(running_queries|queued_queries)
+      name: $1
+      attrNameSnakeCase: true
+      type: GAUGE
+    - pattern: 'trino.execution<name=QueryManager><>FailedQueries\.TotalCount'
+      name: 'failed_queries'
+      type: COUNTER
+
+# ------------------------------------------------------------------------------
+# Starburst Platform License Secret
+# Name of a Kubernetes Secret that contains a Starburst Platform license file.
+# The license file within the secret should be named "starburstdata.license"
+# ------------------------------------------------------------------------------
+starburstPlatformLicense: starburstdata.license
+# ------------------------------------------------------------------------------
+# Helm Labels
+# ------------------------------------------------------------------------------
+
+# Labels to apply to all resources
+commonLabels: {}
+#  environment: dev
+#  myLabel: labelValue
+
+## Service account for Coordinator/Worker pod
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+#serviceAccountName:
+
+# autoscaling 
+autoscaling:
+  - name: coordinator   
+    namespace: starburst 
+    #Enable or disable the hpa
+    enabled: true
+    #Min number of pods that the hpa will create
+    minReplicas: 1
+    #Max number of pods that the hpa will create
+    maxReplicas: 1
+    #Percentage limit of cpu that will spawn more pods
+    averageCPUPercentage: 80
+    #Percentage limit of memory that will spawn more pods
+    averageMemoryValuePercentage: 80
+  - name: worker   
+    namespace: starburst 
+    #Enable or disable the hpa
+    enabled: true
+    #Min number of pods that the hpa will create
+    minReplicas: 2
+    #Max number of pods that the hpa will create
+    maxReplicas: 2
+    #Percentage limit of cpu that will spawn more pods
+    averageCPUPercentage: 80
+    #Percentage limit of memory that will spawn more pods
+    averageMemoryValuePercentage: 80

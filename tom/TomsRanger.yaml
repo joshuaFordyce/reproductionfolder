@@ -1,0 +1,71 @@
+admin:
+  image:
+    repository: "harbor.starburstdata.net/starburstdata/starburst-ranger-admin"
+    # tag: 2.4.0-e.2
+    pullPolicy: "IfNotPresent"
+  port: 6080
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: 2
+    limits:
+      memory: "2Gi"
+      cpu: 2
+  # serviceUser: "starburst_service"
+  passwords:
+     admin: RangerPassword1
+     keyadmin: KeyAdminPassword1
+     service: StarburstServicePassword1
+     tagsync: TagSyncPassword1
+     usersync: UserSyncPassword1
+  #  envFrom:
+  #  - secretRef:
+  #      name: edpq-lab-secrets
+  env:
+    RANGER__policymgr_http_enabled: true
+  probes:
+    startupProbe:
+      failureThreshold: 60
+      periodSeconds: 30
+    readinessProbe:
+      httpGet:
+        path: /
+        port: http
+      failureThreshold: 20
+      periodSeconds: 20
+    livenessProbe:
+      httpGet:
+        path: /
+        port: http
+
+database:
+  type: "external"
+  external:
+    setPasswordsViaEnvFrom: false
+    tls:
+      enabled: false
+    port: 5432
+    host: "joshua-fordyce-bootcamp.cs8j7iukogcy.us-east-2.rds.amazonaw.com"
+    databaseName: "ranger"
+    databaseUser: "ranger"
+    databasePassword: StarburstR0cks!
+    databaseRootUser: "postgres"
+    databaseRootPassword: StarburstR0cks!
+
+expose:
+  type: "clusterIp"
+  clusterIp:
+    name: "ranger"
+    ports:
+      http:
+        port: 6080
+
+datasources:
+  - name: starburst-enterprise
+    host: coordinator
+    port: 8080
+    username: admin
+    password: StarburstR0cks! 
+
+usersync:
+  enabled: false

@@ -1,0 +1,767 @@
+# ------------------------------------------------------------------------------
+# Image
+# ------------------------------------------------------------------------------
+image:
+  repository: "709825985650.dkr.ecr.us-east-1.amazonaws.com/starburst/starburst-enterprise-paygo"
+  tag: "453-e.6.aws.199.arm64"
+  pullPolicy: "IfNotPresent"
+initImage:
+  repository: "709825985650.dkr.ecr.us-east-1.amazonaws.com/starburst/starburst-enterprise-init-paygo"
+  tag: "1.5.14.aws.199.arm64"
+  pullPolicy: "IfNotPresent"
+## registryCredentials set access to container images
+registryCredentials:
+  enabled: false
+  # Replace this with Docker Registry that you use
+  registry:
+  username:
+  password:
+# Instead of setting registryCredentials you can pass list of secrets, in format:
+# imagePullSecrets:
+#  - name: secret1
+#  - name: secret2
+# Select one method of selecting registryCredentials otherwise you'll receive an error
+imagePullSecrets:
+ - name: ecr-pull-secret
+# ------------------------------------------------------------------------------
+# Internal communication
+# ------------------------------------------------------------------------------
+
+# Shared secret for internal communication. Set it to long and unique value.
+# If not set, node.environment value is used from node.properties file.
+sharedSecret: NdtfGxtCb46cxd44F9SGtdtRVjmv2Nc8hgteMu8Un99SBf5jj6UPVatb5wyzW 
+# Environment id; used for generating internal communication token if sharedSecret
+#  is not provided. If empty, default value is generated based on Helm release name.
+environment: starburst
+# Enable TLS for internal communication and autogenerate trusted certificates
+# Note it works only on SEP >= 360-e and requires 'sharedSecret' and 'environment' to be set
+internalTls: false
+# ------------------------------------------------------------------------------
+# Coordinator service
+# Modelled after https://github.com/goharbor/harbor-helm/blob/55598b1f1ccba2bc1c12e94a2622840cae148eb8/values.yaml#L1
+# ------------------------------------------------------------------------------
+expose:
+  type: "loadBalancer"
+  loadBalancer:
+    name: "starburst"
+    ports:
+      http:
+        port: 8443
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+      service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:us-west-2:421065053245:certificate/5092be68-9efa-405e-9555-18c01cbf13d4"
+      service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: bdc:creator=avaradharaju,bdc:environment=lakeprod,bdc:project=sep,bdc:dept=dataplatform
+      service.beta.kubernetes.io/aws-load-balancer-security-groups: sg-0a32e00f63f0660a9,sg-039e81806d82f19eb
+      service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules: "false"
+    # sourceRanges:
+    #   - "12.191.125.0/29"     # HQ AT&T
+    #   - "216.200.126.128/29"  # HQ Zayo
+    #   - "52.38.237.163/32"    # Pulse Corp
+    #   - "207.126.127.96/29"   # Houston
+    #   - "67.214.229.58/32"    # Divvy
+    #   - "198.135.174.200/29"  # Divvy
+    #   - "54.70.204.128/27"    # Quicksight
+    #   - "52.38.237.163/32"    # Looker Dev
+    #   - "34.214.85.34/32"     # tableau online
+    #   - "34.214.85.244/32"    # tableau online
+    #   - "52.43.201.230/32"    # LogicLoop
+    #   - "52.41.55.82/32"      # LogicLoop
+    #   - "35.160.137.212/32"   # NAT Gateway
+    #   - "54.218.7.232/32"     # NAT Gateway
+    #   - "34.213.109.36/32"    # Palantir
+    #   - "44.226.47.207/32"    # Palantir
+    #   - "52.24.219.203/32"    # Palantir
+    #   - "35.81.154.50/32"     # Mulesoft
+    #   - "100.20.5.245/32"     # Mulesoft
+    #   - "40.91.87.202/32"     # Jedox
+    #   - "52.10.110.227/32"    # Corp Workspaces Default NAT Gateway
+    #   - "35.160.23.252/32"    # Corp Workspaces Default NAT Gateway
+    #   - "52.24.119.185/32"    # Acryl DataHub
+    #   - "34.218.97.109/32"    # Acryl DataHub
+    #   - "52.25.202.188/32"    # Acryl DataHub
+    #   - "3.228.35.123/32"     # TreasureData
+    #   - "34.237.48.37/32"     # TreasureData
+    #   - "54.82.188.250/32"    # TreasureData
+    #   - "3.219.32.185/32"     # TreasureData
+    #   - "23.20.255.78/32"     # TreasureData
+    #   - "34.236.118.6/32"     # TreasureData
+    #   - "52.70.135.185/32"    # Salesforce Data Cloud
+    #   - "52.22.251.194/32"    # Salesforce Data Cloud
+    #   - "18.211.105.61/32"    # Salesforce Data Cloud
+    #   - "54.224.187.8/32"     # Salesforce Data Cloud
+    #   - "52.6.67.129/32"      # Salesforce Data Cloud
+    #   - "52.21.246.29/32"     # Salesforce Data Cloud
+# ------------------------------------------------------------------------------
+# Coordinator
+# ------------------------------------------------------------------------------
+coordinator:
+  etcFiles:
+    jvm.config: |
+      -server
+      -XX:G1HeapRegionSize=32M
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:-OmitStackTraceInFastThrow
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Djdk.attach.allowAttachSelf=true
+      -Djdk.nio.maxCachedBufferSize=2000000
+      -Dfile.encoding=UTF-8
+      --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens=java.base/java.nio=ALL-UNNAMED
+      --add-opens=java.base/java.lang=ALL-UNNAMED
+      --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+      -XX:+UseG1GC
+      -agentpath:/usr/lib/starburst/bin/libjvmkill.so
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:G1NumCollectionsKeepPinned=10000000
+      -XX:+UseAESCTRIntrinsics
+      -XX:GCLockerRetryAllocationCount=100
+      -Dcom.sun.management.jmxremote
+      -Dcom.sun.management.jmxremote.port=9080
+      -Dcom.sun.management.jmxremote.rmi.port=9081
+      -Dcom.sun.management.jmxremote.local.only=false
+      -Dcom.sun.management.jmxremote.authenticate=false
+      -Dcom.sun.management.jmxremote.ssl=false
+      #-Djava.rmi.server.hostname=127.0.0.1
+      -Dhttp.proxyHost=proxy.local
+      -Dhttp.proxyPort=3128
+      -Dhttps.proxyHost=proxy.local
+      -Dhttps.proxyPort=3128
+      -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.100.0.0/16|172.23.0.0/18|169.254.169.254|.a.bill.com|.billdot.io|.internal|.sts.us-west-2.amazonaws.com|*.s3.amazonaws.com|*.s3.us-west-2.amazonaws.com|glue.us-west-2.amazonaws.com|athena.us-west-2.amazonaws.com|coordinator
+    # Properties section allows to define any Starburst Enterprise properties files below
+    # as an yaml inline string:
+    # properties:
+    #   config.properties: <<defaults provided>>
+    #   node.properties: <<defaults provided>>
+    #   log.properties: <<defaults provided>>
+    #   password-authenticator.properties: <<optional>>
+    #   <<any_other_optional_properties_files>>
+    #
+    properties:
+      config.properties: |
+        coordinator=true
+        node-scheduler.include-coordinator=false
+        http-server.http.port=8080
+        http-server.authentication.allow-insecure-over-http=true
+        http-server.process-forwarded=true
+        discovery.uri=http://localhost:8080
+        # Okta
+        http-server.authentication.type=oauth2,PASSWORD
+        password-authenticator.config-files=etc/password-authenticator.properties
+        http-server.authentication.allow-insecure-over-http=true
+        http-server.authentication.oauth2.issuer=https://billcom.okta.com/oauth2/ausmfw0kjugkkMPAO1t7
+        http-server.authentication.oauth2.auth-url=https://billcom.okta.com/oauth2/ausmfw0kjugkkMPAO1t7/v1/authorize
+        http-server.authentication.oauth2.token-url=https://billcom.okta.com/oauth2/ausmfw0kjugkkMPAO1t7/v1/token
+        http-server.authentication.oauth2.jwks-url=https://billcom.okta.com/oauth2/ausmfw0kjugkkMPAO1t7/v1/keys
+        http-server.authentication.oauth2.client-id=${ENV:OktaClientId}
+        http-server.authentication.oauth2.client-secret=${ENV:OktaClientSecret}
+        http-server.authentication.oauth2.additional-audiences=service
+        http-server.authentication.oauth2.oidc.discovery=false
+        deprecated.http-server.authentication.oauth2.groups-field=Everyone
+        # refresh tokens
+        http-server.authentication.oauth2.refresh-tokens=true
+        http-server.authentication.oauth2.scopes=openid,offline_access
+        http-server.authentication.oauth2.refresh-tokens.issued-token.timeout=12h
+        oauth2-jwk.http-client.log.enabled=true
+        oauth2-jwk.http-client.http-proxy=proxy.local:3128
+        oauth2-jwk.http-client.http-proxy.secure=false
+        web-ui.authentication.type=oauth2
+        # insights
+        insights.persistence-enabled=true
+        insights.metrics-persistence-enabled=true
+        #insights.jdbc.url=jdbc:postgresql://${ENV:InsightsJDBCHostName}:5432/eks_event_logger_payasugo
+        insights.jdbc.url=jdbc:postgresql://${ENV:InsightsJDBCHostName}:5432/eks_event_logger
+        insights.jdbc.user=${ENV:InsightsJDBCUserName}
+        insights.jdbc.password=${ENV:InsightsJDBCPwd}
+        insights.http-client.idle-timeout=480m
+        # Insights Usage Auto Upload
+        insights.data-upload-automatic.enabled=true
+        insights.data-upload-automatic.memory-store-interval=24h
+        insights.data-upload-automatic.interval=1h
+        insights.data-upload.protocol=https
+        insights.data-upload.endpoint=https://telemetry.eng.starburstdata.net/usage-metrics
+        insights.data-upload.http-client.http-proxy=proxy.local:3128
+        # Enable Built In Access Control
+        starburst.access-control.enabled=true
+        starburst.access-control.authorized-users=avaradharaju,kiyengar,avaradharaju@hq.cashview.com,kiyengar@hq.cashview.com,avaradharaju@hq.bill.com,kiyengar@hq.bill.com
+        starburst.access-control.authorized-groups=dpadmins
+        # query
+        sql.forced-session-time-zone=UTC
+        query.client.timeout=60.00m
+        insights.http-client.idle-timeout=60.00m
+        task.client.timeout=60.00m
+        query.max-stage-count=300
+        query.max-execution-time=60.00m
+        query.max-run-time=75.00m
+        # jmx
+        jmx.rmiregistry.port=9080
+        jmx.rmiserver.port=9081
+        # usage metrics for paygo
+        usage-metrics.gathering.initial-delay=1m
+        usage-metrics.gathering.interval=10m
+        usage-metrics.cluster-usage-resource.enabled=true
+        # Managed statistics
+        starburst.managed-statistics.enabled=false
+      node.properties: |
+        node.environment={{ include "starburst.environment" . }}
+        node.data-dir=/data/starburst
+        plugin.dir=/usr/lib/starburst/plugin
+        node.server-log-file=/var/log/starburst/server.log
+        node.launcher-log-file=/var/log/starburst/launcher.log
+      log.properties: |
+        # Enable verbose logging from Starburst Enterprise
+        io.trino=INFO
+        com.starburstdata=INFO
+        #com.amazonaws=DEBUG
+        com.starburstdata.cache=INFO
+      password-authenticator.properties: |
+        password-authenticator.name=okta
+        okta.account-url=https://billcom.okta.com
+      # cache.properties: |
+      #   insights.jdbc.user=${ENV:InsightsJDBCUserName}
+      #   insights.jdbc.password=${ENV:InsightsJDBCPwd}
+      #   insights.jdbc.jdbc-url=jdbc:postgresql://${ENV:InsightsJDBCHostName}:5432/cachesvcdb
+      #   starburst.user=sa_dp_quicksight@hq.bill.com
+      #   starburst.jdbc-url=jdbc:trino://coordinator:8080
+      #   refresh-interval=5m
+      #   rules.file=secretRef:cache-service-rules:rules.json
+    # other:
+    #   rules.json: |
+    #     {
+    #       "defaultCacheCatalog": "bdc_lakehouse",
+    #       "defaultCacheSchema": "default_cache",
+    #       "rules": [
+    #         {
+    #           "catalogName": "bdc_redshift",
+    #           "schemaName": "common",
+    #           "tableName": "bdc_organization_360",
+    #           "refreshInterval": "30m",
+    #           "gracePeriod": "15m"
+    #         },
+    #         {
+    #           "catalogName": "bdc_redshift",
+    #           "schemaName": "lever",
+    #           "tableName": "opportunities",
+    #           "refreshInterval": "15m",
+    #           "gracePeriod": "10m"
+    #         }
+    #       ]
+    #     }
+  resources:
+    requests:
+      memory: "240Gi"
+      cpu: 30
+    limits:
+      memory: "240Gi"
+      cpu: 30
+  # size of container memory headroom, needs to be less than resource allocation limit for memory
+  # nodeMemoryHeadroom: "2Gi"
+  # Percentage of container memory reduced with headroom assigned to Java heap, must be less than 100
+  heapSizePercentage: 90
+  # Headroom of Java heap memory not tracked by Starburst Enterprise during query execution, must be less than 100
+  heapHeadroomPercentage: 30
+  additionalProperties: ""
+  # Allows to propagate environment variables from different sources like accordingly to K8S schema
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#envfromsource-v1-core
+  # e.g.
+  # envFrom:
+  #   - secretRef:
+  #       name: <<secret_name>>
+  envFrom:
+  - configMapRef:
+      name: proxy-environment-variables
+  - secretRef:
+      name: vars-deployment
+  - secretRef:
+      name: htpasswd
+  deploymentAnnotations: {}
+  podAnnotations:
+    ad.datadoghq.com/coordinator.checks: |
+      {
+        "trino": {
+          "init_config": {
+            "is_jmx": true,
+            "collect_default_metrics": true,
+            "new_gc_metrics": true
+          },
+          "instances": [
+            {
+              "host": "%%host%%",
+              "port": "9080"
+            }
+          ]
+        }
+      }  
+  nodeSelector: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: apps
+                operator: In
+                values:
+                  - sep-coordinator
+  tolerations:
+    - key: "kubernetes.azure.com/scalesetpriority"
+      operator: "Equal"
+      value: "spot"
+      effect: "NoSchedule"
+  # Priority class for coordinator pod
+  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  priorityClassName:
+  # Add security context to the container level
+  securityContext: {}
+  # Attach additional sidecar containers to the coordinator pod
+  sidecars: []
+  # Add extra init containers
+  initContainers: []
+  # Expose extra ports
+  additionalExposedPorts: {}
+# ------------------------------------------------------------------------------
+# Workers
+# ------------------------------------------------------------------------------
+worker:
+  etcFiles:
+    jvm.config: |
+      -server
+      -XX:G1HeapRegionSize=32M
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:-OmitStackTraceInFastThrow
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Djdk.attach.allowAttachSelf=true
+      -Djdk.nio.maxCachedBufferSize=2000000
+      -Dfile.encoding=UTF-8
+      --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens=java.base/java.nio=ALL-UNNAMED
+      --add-opens=java.base/java.lang=ALL-UNNAMED
+      --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+      -XX:+UseG1GC
+      -agentpath:/usr/lib/starburst/bin/libjvmkill.so
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:G1NumCollectionsKeepPinned=10000000
+      -XX:+UseAESCTRIntrinsics
+      -XX:GCLockerRetryAllocationCount=100
+      -Dhttp.proxyHost=proxy.local
+      -Dhttp.proxyPort=3128
+      -Dhttps.proxyHost=proxy.local
+      -Dhttps.proxyPort=3128
+      -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.100.0.0/16|172.23.0.0/18|169.254.169.254|.a.bill.com|.billdot.io|.internal|.sts.us-west-2.amazonaws.com|*.s3.amazonaws.com|*.s3.us-west-2.amazonaws.com|glue.us-west-2.amazonaws.com|athena.us-west-2.amazonaws.com|coordinator
+    # Properties section allows to define any Starburst Enterprise properties files below
+    # as an yaml inline string:
+    # properties:
+    #   config.properties: <<required>>
+    #   node.properties: <<required>>
+    #   log.properties: <<required>>
+    #   <<any_other_optional_properties_files>>
+    #
+    properties:
+      config.properties: |
+        coordinator=false
+        http-server.http.port=8080
+        discovery.uri=http://coordinator:8080
+      node.properties: |
+        node.environment={{ include "starburst.environment" . }}
+        node.data-dir=/data/starburst
+        plugin.dir=/usr/lib/starburst/plugin
+        node.server-log-file=/var/log/starburst/server.log
+        node.launcher-log-file=/var/log/starburst/launcher.log
+      log.properties: |
+        # Enable verbose logging from Starburst Enterprise
+        #io.trino=DEBUG
+        #com.starburstdata.presto=DEBUG
+        #io.trino=DEBUG
+        com.starburstdata=INFO
+        #com.amazonaws=INFO
+    # Other files that needs to be places in Starburst Enterprise etc directory
+    # e.g.
+    # other:
+    #   resource-groups.json: |
+    #     {
+    #       <<json_here>
+    #     }
+    #   kafka/tpch.customer.json: |
+    #     {
+    #       <<json_here>
+    #     }
+    #
+    other: {}
+  # number of workers
+  replicas: 14
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+  kedaScaler:
+    enabled: false
+    port: 8021
+    image:
+      repository: "709825985650.dkr.ecr.us-east-1.amazonaws.com/starburst/keda-trino-scaler-paygo"
+      tag: "0.1.11.aws.88"
+      pullPolicy: "IfNotPresent"
+    # For details see https://keda.sh/docs/2.6/concepts/scaling-deployments/#scaledobject-spec
+    scaledObjectSpec:
+      scaleTargetRef:
+        name: worker
+      pollingInterval: 30
+      cooldownPeriod: 300
+      idleReplicaCount: 0
+      minReplicaCount: 1
+      maxReplicaCount: 100
+      triggers:
+        - metadata:
+            scaleMethod: "query_queue"
+            # number of concurrent queries handled by a single worker
+            numberOfQueriesPerWorker: "10"
+            # reduce the number of workers to idleReplicaCount when the query queue is empty
+            scaleInToIdleReplicaCountIfNoQueuedQueriesLeft: "true"
+          type: external
+      advanced: {}
+  deploymentTerminationGracePeriodSeconds: 300 # 5 minutes
+  starburstWorkerShutdownGracePeriodSeconds: 120 # 2 minutes
+  resources:
+    requests:
+      memory: "240Gi"
+      cpu: 30
+    limits:
+      memory: "240Gi"
+      cpu: 30
+  # size of container memory headroom, needs to be less that resource allocation limit for memory
+  nodeMemoryHeadroom: "2Gi"
+  # Percentage of container memory reduced with headroom assigned to Java heap, must be less than 100
+  heapSizePercentage: 90
+  # Headroom of Java heap memory not tracked by Starburst Enterprise during query execution, must be less than 100
+  heapHeadroomPercentage: 30
+  additionalProperties: ""
+  # Allows to propagate environment variables from different sources like accordingly to K8S schema
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#envfromsource-v1-core
+  # e.g.
+  # envFrom:
+  #   - secretRef:
+  #       name: <<secret_name>>
+  envFrom:
+    - configMapRef:
+        name: proxy-environment-variables
+    - secretRef:
+        name: vars-deployment
+    - secretRef:
+        name: htpasswd
+  deploymentAnnotations: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: apps
+                operator: In
+                values:
+                  - sep
+  tolerations:
+    - key: "kubernetes.azure.com/scalesetpriority"
+      operator: "Equal"
+      value: "spot"
+      effect: "NoSchedule"
+  # Priority class for worker pods
+  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  priorityClassName:
+  # Add security context to the container level
+  securityContext: {}
+  # Attach additional sidecar containers to worker pods
+  sidecars: []
+  # Add extra init containers
+  initContainers: []
+  # Expose extra ports
+  additionalExposedPorts: {}
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Init Container
+# ------------------------------------------------------------------------------
+starburstEnterpriseInit:
+  # Add security context at the container level
+  securityContext: {}
+# ------------------------------------------------------------------------------
+# Common Coordinator/Worker Settings
+# ------------------------------------------------------------------------------
+
+# External Secrets
+#
+# It allows to automatically mount external secrets (for example from AWS Secrets Manager)
+# which are referenced by secretRef or secretEnv notation.
+#
+# Configuration:
+#
+#  externalSecrets:
+#    enabled: true # disabled by default
+#    type: goDaddy # type of External Secret Provider, currently only goDaddy is supported
+#    secretPrefix: <<secret_name_prefix>> # prefix of all secrets that needs to be mapped to external secret
+#    goDaddy:
+#      # section for GoDaddy External Secrets specific configuration
+#      backendType: <<string>> - ref to. https://github.com/godaddy/kubernetes-external-secrets
+#      ...
+#
+# Chart scans for all secretRef or secretEnv references in values.yaml which starts with
+# configured secretPrefix. For each secret found, it generates ExternalSecret K8s manifest.
+# Note that:
+# - Selected External Secrets provider needs to be deployed and configured separately.
+# - Names of secrets in external storage must match names of K8S secrets we reference to.
+# - For each external secret single K8s secret will be created.
+#
+# Example:
+# - Create AWS Secrets Manager secret:
+#    aws secretsmanager create-secret --name external/starburst-http-server-port --secret-string 8888
+#
+# - Reference it from config.properties:
+#    coordinator:
+#      etcFiles:
+#        config.properties: |
+#          http-server.http.port=secretEnv:external/starburst-http-server-port
+#
+# - Configure External Secrets:
+#    externalSecrets:
+#      enabled: true
+#      type: goDaddy
+#      secretPrefix: external/
+#      goDaddy:
+#        backendType: secretsManager
+#
+# Effect:
+# - External Secret Manifest is created
+#   !!! Note that names are adjusted to match naming requirements:
+#      - Secret name illegal charts are switched to '.'
+#      - Env. variable is upper case nad illegal chars are switched to '_'
+#    apiVersion: kubernetes-client.io/v1
+#    kind: ExternalSecret
+#    metadata:
+#      name: external.starburst-http-server-port
+#    spec:
+#      backendType: secretsManager
+#      data:
+#        - key: external/starburst-http-server-port
+#          name: EXTERNAL_STARBURST_HTTP_SERVER_PORT
+#
+# - External Secrets provider fetches secret from AWS and creates K8s Secret:
+#    apiVersion: v1
+#    kind: Secret
+#    metadata:
+#      name: external.starburst-http-server-port
+#    type: Opaque
+#    data:
+#      EXTERNAL_STARBURST_HTTP_SERVER_PORT: 8888
+#
+# - Above secret is bind to container as EXTERNAL_STARBURST_HTTP_SERVER_PORT environment
+#   variable.
+#
+# - Starburst Enterprise config.properties is resolved to:
+#   http-server.http.port=${ENV:EXTERNAL_STARBURST_HTTP_SERVER_PORT}
+#
+externalSecrets:
+  enabled: false
+  type: goDaddy
+  secretPrefix: external0
+  goDaddy:
+    backendType: secretsManager
+# User database
+# htpasswd database generator
+# Creates 'password.db' file under /etc/starburst and configures the Starburst Enterprise
+# file-based authentication (i.e. automatically adds all needed properties to
+# 'password-authenticator.properties' file) if enabled.
+userDatabase:
+  enabled: false
+  users: []
+  # If user database is enabled then at least one user should be provided.
+  # Properties validation requires that password is provided for each user.
+  # users:
+  #   - username: admin
+  #     password:
+# Set the security context for a Pod
+securityContext: {}
+# ------------------------------------------------------------------------------
+# initFile - optional startup script, called with single parameter "coordinator"
+# or "worker" if not set default container command is called
+# - initFile - yaml inline string with init script content started as /bin/bash <<init_file>>
+# - extraArguments - additional arguments passed to initFile script after ${1}
+#                    which corresponds to coordinator or worker
+#
+# The init script content must end with a command to launch Starburst Enterprise.
+# For Starburst Enterprise versions < 345-e use the launcher "exec /usr/lib/starburst/bin/launcher run"
+# For Starburst Enterprise versions > 345-e to enable graceful shutdown of Starburst Enterprise workers use
+# "exec /usr/lib/starburst/bin/run-starburst"
+#
+# e.g.
+# initFile: |
+#   #!/bin/bash
+#   echo "Custom init for $1 $2"
+#   exec /usr/lib/starburst/bin/run-starburst
+# extraArguments:
+#   - TEST_ARG
+#
+# Will output for Coordinator:
+# Custom init for coordinator TEST_ARG
+# <<starburst_logs>>
+# And for Worker:
+# Custom init for worker TEST_ARG
+# <<starburst_logs>>
+# ------------------------------------------------------------------------------
+initFile: |
+  #!/bin/bash
+  if [ "${1:-}" == "license-verifier" ]; then
+    export LOGLEVEL=DEBUG
+    export no_proxy=10.100.0.0/16,localhost,127.0.0.1,172.23.0.0/18,169.254.169.254,us-west-2.eks.amazonaws.com,.ssm.us-west-2.amazonaws.com,.runtime.sagemaker.us-west-2.amazonaws.com,.ec2messages.us-west-2.amazonaws.com,.ecs.us-west-2.amazonaws.com,.ecs-a.us-west-2.amazonaws.com,.api.ecr.us-west-2.amazonaws.com,.sns.us-west-2.amazonaws.com,.events.us-west-2.amazonaws.com,.ec2.us-west-2.amazonaws.com,.monitoring.us-west-2.amazonaws.com,.ecs-t.us-west-2.amazonaws.com,.secretsmanager.us-west-2.amazonaws.com,.logs.us-west-2.amazonaws.com,.sqs.us-west-2.amazonaws.com,.dkr.ecr.us-west-2.amazonaws.com,.dkr.ecr.us-west-2.amazonaws.com,.ssmmessages.us-west-2.amazonaws.com,.cloudformation.us-west-2.amazonaws.com,.cloudtrail.us-west-2.amazonaws.com,.codepipeline.us-west-2.amazonaws.com,.elasticloadbalancing.us-west-2.amazonaws.com,.servicecatalog.us-west-2.amazonaws.com,.sts.us-west-2.amazonaws.com,.kms.us-west-2.amazonaws.com,.glue.us-west-2.amazonaws.com,.config.us-west-2.amazonaws.com,.athena.us-west-2.amazonaws.com,.api.sagemaker.us-west-2.amazonaws.com,.notebook.us-west-2.sagemaker.aws,.notebook.us-west-2.sagemaker.aws,.runtime.elastic-inference.us-west-2.amazonaws.com,.acm-pca.us-west-2.amazonaws.com,.elasticfilesystem-fips.us-west-2.amazonaws.com,.autoscaling.us-west-2.amazonaws.com,.application-autoscaling.us-west-2.amazonaws.com,.elasticfilesystem.us-west-2.amazonaws.com,.appmesh-envoy-management.us-west-2.amazonaws.com,.execute-api.us-west-2.amazonaws.com,.lambda.us-west-2.amazonaws.com,s3.amazonaws.com,.s3.us-west-2.amazonaws.com,.a.bill.com,.billdot.io,.dynamodb.us-west-2.amazonaws.com,.internal,.sts.us-east-1.amazonaws.com
+    export https_proxy=http://proxy.local:3128
+  fi
+  cp /usr/lib/starburst/plugin/redshift/redshift-jdbc*.jar /usr/lib/starburst/plugin/generic-jdbc/
+  exec /usr/lib/starburst/bin/run-starburst
+extraArguments: []
+# Below secret will be mounted in /extra-secret/ within containers
+extraSecret:
+  # Replace this with secret name that should be used from namespace you are deploying to
+  name:
+  # Optionally 'file' may be provided which will be deployed as secret with given 'name' in used namespace.
+  file:
+# If necessary overwrite the default probe defined in the Deployment definition
+startupProbe:
+# If necessary overwrite the default probe defined in the Deployment definition
+readinessProbe:
+# If necessary overwrite the default probe defined in the Deployment definition
+livenessProbe:
+# ------------------------------------------------------------------------------
+# Starburst Warp Speed
+# ------------------------------------------------------------------------------
+warpSpeed:
+  enabled: false
+  # Additional percentage of container memory reduced from heap size assigned to Java, must be less than 100
+  additionalHeapSizePercentage: 15
+  fileSystem:
+    # The path for the mount point used to mount the local SSDs, might differ between cloud vendors
+    # AWS, Azure - Defined by the user
+    # GCP - Needs to be set to  `/mnt/stateful_partition/kube-ephemeral-ssd`
+    localStorageMountPath: /opt/data
+  image:
+    # Image that prepares filesystem for Warp Speed.
+    # Note that due to system limitations this has to be done by init container running in privileged mode
+    repository: "709825985650.dkr.ecr.us-east-1.amazonaws.com/starburst/starburst-warpspeed-init-paygo"
+    # AWS, GCP - Use default tag
+    # Azure - add `-azure` suffix, ex. 1.0.0-azure
+    tag: "1.0.16.aws.199"
+    pullPolicy: "IfNotPresent"
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Query memory usage control
+# - maxConcurrentQueries - Maximum queries executed in parallel on single node
+# ------------------------------------------------------------------------------
+query:
+  maxConcurrentQueries: 3
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Disk Spilling
+# Spilling uses internal Node storage(HDD). Mounted within Pod and Container.
+# ------------------------------------------------------------------------------
+spilling:
+  enabled: false
+  volume:
+    emptyDir: {}
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Caching
+# !!! Warning !!!
+# Currently caching only works with Hive Connector. Future releases will change it.
+# - Enabling caching here will enable it for all Hive connectors.
+# - To enable caching only for specific connector, configure it via catalogs
+#   and additionalVolumes. In such case this feature needs to be disabled.
+# ------------------------------------------------------------------------------
+cache:
+  enabled: true
+  diskUsagePercentage: 80
+  ttl: "7d"
+  volume:
+    emptyDir: {}
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Catalogs.
+# Provided as Map
+#  - key - catalog name
+#  - value - catalog properties as string
+# ------------------------------------------------------------------------------
+# catalogs:
+#   tpch: |-
+#     connector.name=tpch
+#     tpch.splits-per-node=4
+# ------------------------------------------------------------------------------
+# Starburst Enterprise Additional Volumes mount. General purpose.
+# Provided as array
+#  - path: <<container mount path>>
+#    subPath: <<optional key in ConfigMap or Secret>>
+#    volume: {}
+#
+#  Volume definition
+#  https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes
+#  without name parameter.
+#
+# If you specify 'path' only, a directory named 'path' is created. When mounting ConfigMap
+# or Secret, files are created in this directory for each key.
+#
+# If you specify 'subPath', specific key named 'subPath' from ConfigMap or Secret is mounted as
+# a file with name provided by 'path'.
+#
+# E.g. for K8S emptyDir volume
+# additionalVolumes:
+#   - path: /mnt/InContainer
+#     volume:
+#       emptyDir: {}
+#
+# ------------------------------------------------------------------------------
+additionalVolumes: []
+# ------------------------------------------------------------------------------
+# Starburst Usage Metrics
+# ------------------------------------------------------------------------------
+usageMetrics:
+  enabled: true
+  usageClient:
+    initialDelay: "1m"
+    interval: "1m"
+# ------------------------------------------------------------------------------
+# Prometheus JMX exporter
+# ------------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  agent:
+    version: "0.20.0"
+    port: 8081
+    config: "/etc/starburst/telemetry/prometheus.yaml"
+  rules:
+    - pattern: trino.execution<name=QueryManager><>(running_queries|queued_queries)
+      name: $1
+      attrNameSnakeCase: true
+      type: GAUGE
+    - pattern: 'trino.execution<name=QueryManager><>FailedQueries\.TotalCount'
+      name: 'failed_queries'
+      type: COUNTER
+# ------------------------------------------------------------------------------
+# Starburst Platform License Secret
+# Name of a Kubernetes Secret that contains a Starburst Platform license file.
+# The license file within the secret should be named "starburstdata.license"
+# ------------------------------------------------------------------------------
+# starburstPlatformLicense: starburstdata
+
+# ------------------------------------------------------------------------------
+# Helm Labels
+# ------------------------------------------------------------------------------
+
+# Labels to apply to all resources
+commonLabels: {}
+#  environment: dev
+#  myLabel: labelValue
+
+## Service account for Coordinator/Worker pod
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+serviceAccountName: starburst-enterprise-sa
+
+# ------------------------------------------------------------------------------
+# AWS Marketplace - do not overwrite
+# ------------------------------------------------------------------------------
+awsSepLicenseVerifier:
+  enabled: true
+  tag: 453.6.0.aws.199.arm64 

@@ -1,0 +1,519 @@
+global:
+  fqdn: starburst-dev.apps2.devjones.com
+
+pod:
+  environmentFlag: D
+  image:
+    repository: xxxxx.azurecr.io
+
+ingress:
+  host: starburst-dev.apps2.devjones.com
+
+hostrule:
+  fqdnTlsName: starburst-dev.apps2.devjones.com
+
+httprule:
+  fqdnName: starburst-dev.apps2.devjones.com 
+
+vault:
+  certPath: "pki/issue/devjones.com"
+  commonName: "starburst-dev.apps2.devjones.com"
+
+customLabels:
+  cluster: xxxxx-aks
+  env: dev
+  team: datamesh
+  developer: p228713
+  owner: p037536
+
+expose:
+  ingress:
+    ingressName: "coordinator-ingress"
+    serviceName: "starburst"
+    servicePort: 8080
+    ingressClassName:
+    tls:
+      enabled: true
+      secretName:
+    host: "starburst-dev.apps2.devjones.com"
+    path: "/"
+    # pathType is one of ImplementationSpecific, Prefix, or Exact.
+    pathType: "ImplementationSpecific"
+    annotations: {}
+
+
+environment: dev
+com.illumio.deployment: "Starburst-V443.7.0"
+com.illumio.env: "dev"
+image:
+  repository: harbor.starburstdata.net/starburstdata/starburst-enterprise
+  tag: "435-e.9"
+
+initImage:
+  repository: harbor.starburstdata.net/starburstdata/starburst-enterprise-init
+  tag: "1.0.0"
+# licenseManager:
+#   image:
+#     repository: xxxxx.azurecr.io/starburstdata/license-manager
+
+# ------------------------------------------------------------------------------
+# Coordinator
+# ------------------------------------------------------------------------------
+userDatabase:
+  enabled: true
+  name: password.db
+coordinator:
+  etcFiles:
+    jvm.config: |
+      -server
+      -XX:G1HeapRegionSize=32M
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:-OmitStackTraceInFastThrow
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Dfile.encoding=UTF-8
+      -Djdk.attach.allowAttachSelf=true
+      -Djdk.nio.maxCachedBufferSize=2000000
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:+UseAESCTRIntrinsics
+      --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens=java.base/java.nio=ALL-UNNAMED
+      --add-opens=java.base/java.lang=ALL-UNNAMED
+      --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+      --enable-preview
+      -XX:GCLockerRetryAllocationCount=100
+      -XX:+UseG1GC
+      -agentpath:/usr/lib/starburst/bin/libjvmkill.so
+      -Djavax.net.ssl.trustStore=/etc/starburst/certs/truststore.jks
+      -Djavax.net.ssl.trustStoreType=JKS
+    # Properties section allows to define any Starburst Enterprise properties files below
+
+    properties:
+      group-provider.properties: |
+        group-provider.name=starburst
+      config.properties: |
+        # starburst.users.provisioning.type=SCIM
+        # starburst.users.provisioning.scim.secret-token=${ENV:SCIM_SECRET}
+        coordinator=true
+        # com.starburstdata.presto.plugin.immuta=DEBUG
+        node-scheduler.include-coordinator=false
+        http-server.http.port=8080
+        http-server.https.port=8443
+        http-server.https.enabled=true
+        discovery.uri=http://localhost:8080
+        http-server.process-forwarded=true
+        #access-control.config-files=/etc/starburst/immuta-access-control.properties, etc/biac.properties
+        access-control.config-files=etc/biac.properties
+        #http-server.authentication.type=delegated-oauth2,PASSWORD
+        http-server.authentication.type=oauth2,PASSWORD
+        query.max-cpu-time=2h
+        http-server.authentication.oauth2.issuer=${ENV:OAUTH2_ISSUER}
+        http-server.authentication.oauth2.access-token-issuer=${ENV:OAUTH2_ACCESS_TOKEN_ISSUER}
+        http-server.authentication.oauth2.additional-audiences=${ENV:OAUTH2_ADDITIONAL_AUDIENCES}
+        http-server.authentication.oauth2.scopes=${ENV:OAUTH2_SCOPES},openid
+        http-server.authentication.oauth2.client-id=${ENV:TABLEAU_CLIENT_ID}
+        http-server.authentication.oauth2.client-secret=${ENV:TABLEAU_SECRET}
+        http-server.authentication.oauth2.principal-field=upn
+        web-ui.authentication.type=oauth2
+        http-server.authentication.oauth2.oidc.use-userinfo-endpoint=false
+        http-server.process-forwarded=true
+        #starburst.access-control.authorized-users=p230771@devjones.com,datamesh@edwardjones.com,p228713@devjones.com,p235819@devjones.com,p240356@devjones.com,p236778@devjones.com
+        #starburst.access-control.authorized-users=${ENV:DATA_PRODUCT_USER}
+        # not working #starburst.access-control.audit.enabled=true
+      
+      cache.properties: |
+        starburst.user=${ENV:DATA_PRODUCT_USER}
+        starburst.password=${ENV:DATA_PRODUCT_PASSWORD}
+        #starburst.jdbc-url=jdbc:trino://coordinator:8080
+        starburst.jdbc-url=jdbc:trino://coordinator:8443?SSL=true&SSLVerification=NONE
+        refresh-interval=24h  
+        #adding this line for the cache service interval which defines materialized view refreshes 
+        #rules.file=etc/rules.json
+        #type-mapping=FILE
+        #type-mapping.file=etc/type-mapping.json
+        #rules.file=etc/rules.json
+        #sukesh commented on 0310
+        service-database.user=${ENV:INSIGHTS_PSQL_USERNAME}
+        service-database.password=${ENV:INSIGHTS_PSQL_PASSWORD}
+        service-database.jdbc-url=jdbc:postgresql://${ENV:INSIGHTS_PSQL_URL}:5432/cache
+      node.properties: |
+        node.environment={{ include "starburst.environment" . }}
+        node.data-dir=/data/starburst
+        plugin.dir=/usr/lib/starburst/plugin
+        node.server-log-file=/var/log/starburst/server.log
+        node.launcher-log-file=/var/log/starburst/launcher.log
+      log.properties: |
+        #net.snowflake=DEBUG
+        net.snowflake=ERROR
+        # Enable verbose logging from Starburst Enterprise
+        #io.trino=DEBUG
+        com.starburstdata.presto=ERROR
+        com.starburstdata.presto.biac=ERROR
+        #For Oracle Logs 
+        oracle.jdbc=TRACE
+        io.trino.plugin.oracle=DEBUG
+        #For Databricks Logs
+        #io.trino=INFO
+        io.trino.plugin.deltalake=DEBUG
+        #com.starburstdata.presto.plugin.immuta=DEBUG
+        com.starburstdata.presto.plugin.deltalake=DEBUG
+#       password-authenticator.properties: |
+#         password-authenticator.name=file
+#         file.password-file=/etc/starburst/password.db
+      biac.properties: |
+        access-control.name=starburst
+      # immuta-access-control.properties: |
+      #   access-control.name=immuta
+      #   immuta.disable-hostname-verification=true
+      #   immuta.ca-file=/etc/starburst/ejroot.der 
+      #   immuta.endpoint=${ENV:IMMUTA_ENDPOINT}
+      #   immuta.apikey=${ENV:IMMUTA_API_KEY}
+      #   immuta.user.admin=datamesh@edwardjones.com
+      #   # immuta.group.admin=datamesh_immuta
+    other:
+      auth-to-local-rules.json: |    
+        {
+          "rules": [
+            {
+              "match": "PRINCIPAL",
+              "pattern": "([^/]+)@devjones.com",
+              "case": "UPPER",
+              "substitution": "$1"
+            }
+          ]
+        }  
+  resources:
+    memory: "8Gi"
+    cpu: 2
+  # size of container memory headroom, needs to be less than resource allocation limit for memory
+  nodeMemoryHeadroom: "2Gi"
+  # Percentage of container memory reduced with headroom assigned to Java heap, must be less than 100
+  heapSizePercentage: 90
+  # Headroom of Java heap memory not tracked by Starburst Enterprise during query execution, must be less than 100
+  heapHeadroomPercentage: 30
+  additionalProperties: |
+    insights.persistence-enabled=true 
+    insights.metrics-persistence-enabled=true
+    insights.jdbc.url=jdbc:postgresql://${ENV:INSIGHTS_PSQL_URL}:5432/postgress
+    insights.jdbc.user=${ENV:INSIGHTS_PSQL_USERNAME}
+    insights.jdbc.password=${ENV:INSIGHTS_PSQL_PASSWORD}
+    starburst.data-product.enabled=true
+    data-product.starburst-jdbc-url=jdbc:trino://coordinator:8443?SSL=true&SSLVerification=NONE
+    data-product.starburst-user=${ENV:DATA_PROD_USER}
+    data-product.starburst-password=${ENV:DATA_PROD_PASSWD}
+    starburst.access-control.enabled=true
+    query.max-memory-per-node=60GB
+    #starburst.access-control.authorized-users=p228713@devjones.com,p236778@devjones.com,p230771@devjones.com,p240356@devjones.com,datamesh@edwardjones.com,p236778@devjones.com,p100182@devjones.com
+    starburst.access-control.authorized-users=p228713@devjones.com,p240356@devjones.com,datamesh@devjones.com,p100182@devjones.com
+    #starburst.access-control.authorized-users=${ENV:DATA_PRODUCT_USER}
+    #starburst.access-control.audit.access-log.enabled=true
+    #starburst.access-control.audit.access-log.queue-size=100000
+    starburst.access-control.audit.enabled=true
+    starburst.access-control.audit.access-log.enabled=true
+    starburst.users.provisioning.type=SCIM
+    starburst.users.provisioning.scim.secret-token=${ENV:SCIM_SECRET}
+    #Log Retention
+    insights.data-retention.max-age=2d
+    insights.data-retention.sweep-schedule=0 2 * * *
+    insights.data-retention.sweep-schedule-timezone=America/New_York
+    insights.data-retention.sweep-max-duration=3h
+
+  resources:
+    requests:
+      memory: "12Gi"
+      cpu: 3
+    limits:
+      memory: "12Gi"
+
+  envFrom:
+    - secretRef:
+        name: catalog-creds
+  nodeSelector: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: apps
+              operator: In
+              values:
+                - sep
+  tolerations:
+    - key: "starburst-role"
+      operator: "Equal"
+      value: "coordinator"
+      effect: "NoSchedule"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+       - ALL    
+  deploymentAnnotations: {}
+  #podAnnotations: {}
+  podAnnotations:
+    com.illumio.deployment: "starburst"
+    com.illumio.riskscore: "med"
+    com.illumio.data: "internal"
+    com.illumio.namespace: "starburst"
+    com.illumio.postgres: "allow-postgres"
+    com.illumio.farms: "allow-farms"
+    com.illumio.kubeapi: "allow-kubeapi"
+    com.illumio.oracle: "allow-oracle"
+    com.illumio.snowflake: "allow-snowflake"
+  nodeSelector: {}
+  affinity: {}
+  tolerations:
+  - key: "starburst-role"
+    operator: "Equal"
+    value: "coordinator"
+    effect: "NoSchedule"
+  # autoscaling 
+  autoscaling:
+    #Enable or disable the hpa
+    enabled: true
+    #Min number of pods that the hpa will create
+    minReplicas: 1
+    #Max number of pods that the hpa will create
+    maxReplicas: 2
+    #Percentage limit of cpu that will spawn more pods
+    averageCPUPercentage: 80
+    #Percentage limit of memory that will spawn more pods
+    averageMemoryValuePercentage: 80
+  # Priority class for coordinator pod
+  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  priorityClassName:
+  # Add security context to the container level
+  #securityContext: 
+  #  seccompProfile:
+  #    type: RuntimeDefault
+  #  runAsNonRoot: true
+  #  runAsUser: 1000
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+       - ALL
+
+  # Attach additional sidecar containers to the coordinator pod
+  sidecars: []
+  # Add extra init containers
+  initContainers: []
+  # Expose extra ports
+  additionalExposedPorts: {}
+
+
+
+# ------------------------------------------------------------------------------
+# Workers
+# ------------------------------------------------------------------------------
+
+worker:
+  etcFiles:
+    jvm.config: |
+      -server
+      -XX:G1HeapRegionSize=32M
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:-OmitStackTraceInFastThrow
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Djdk.attach.allowAttachSelf=true
+      -Djdk.nio.maxCachedBufferSize=2000000
+      -Dfile.encoding=UTF-8
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:+UseAESCTRIntrinsics
+      --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens=java.base/java.nio=ALL-UNNAMED
+      --add-opens=java.base/java.lang=ALL-UNNAMED
+      --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+      -XX:GCLockerRetryAllocationCount=100
+      -XX:+UseG1GC
+      -agentpath:/usr/lib/starburst/bin/libjvmkill.so
+      -Djavax.net.ssl.trustStore=/etc/starburst/certs/truststore.jks
+      -Djavax.net.ssl.trustStoreType=JKS
+    # Properties section allows to define any Starburst Enterprise properties files below
+    # as an yaml inline string:
+    # properties:
+    #   config.properties: <<required>>
+    #   node.properties: <<required>>
+    #   log.properties: <<required>>
+    #   <<any_other_optional_properties_files>>
+    #
+    properties:
+      config.properties: |
+        coordinator=false
+        http-server.http.port=8080
+        http-server.https.enabled=true
+        http-server.https.port=8443
+        internal-communication.https.required=true
+        discovery.uri=http://localhost:8443
+
+        http-server.process-forwarded=true
+    other:
+      auth-to-local-rules.json: |    
+        {
+          "rules": [
+            {
+              "match": "PRINCIPAL",
+              "pattern": "([^/]+)@devjones.com",
+              "case": "UPPER",
+              "substitution": "$1"
+            }
+          ]
+        }
+
+  resources:
+    requests:
+      memory: "12Gi"
+      cpu: 3
+    limits:
+      memory: "12Gi"
+  # size of container memory headroom, needs to be less that resource allocation limit for memory
+  nodeMemoryHeadroom: "2Gi"
+  # Percentage of container memory reduced with headroom assigned to Java heap, must be less than 100
+  heapSizePercentage: 90
+  # Headroom of Java heap memory not tracked by Starburst Enterprise during query execution, must be less than 100
+  # heapHeadroomPercentage: 30
+  additionalProperties: ""
+  heapHeadroomPercentage: 50
+  envFrom:
+    - secretRef:
+        name: catalog-creds
+  nodeSelector: {}
+  affinity: 
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: apps
+              operator: In
+              values:
+                - sep
+  tolerations: 
+    - key: "starburst-role"
+      operator: "Equal"
+      value: "worker"
+      effect: "NoSchedule"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    runAsUser: 1000  
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+       - ALL    
+  deploymentAnnotations: {}
+  #podAnnotations: {}
+  podAnnotations:
+    com.illumio.deployment: "starburst"
+    com.illumio.riskscore: "med"
+    com.illumio.data: "internal"
+    com.illumio.namespace: "starburst"
+    com.illumio.postgres: "allow-postgres"
+    com.illumio.farms: "allow-farms"
+    com.illumio.kubeapi: "allow-kubeapi"
+    com.illumio.oracle: "allow-oracle"
+    com.illumio.snowflake: "allow-snowflake"
+  priorityClassName:
+catalogs:
+  tpcds: |
+    connector.name=tpcds
+  tpch: |-
+    connector.name=tpch
+    tpch.splits-per-node=4
+  analytics_datalake: |-
+    connector.name=delta_lake
+    hive.metastore.uri=thrift://hive-analytics-datalake:9083
+    #hive.security=allow-all
+    delta.security=starburst
+    hive.azure.abfs.oauth.endpoint=${ENV:ABFS_OAUTH_ENDPOINT}
+    hive.azure.abfs.oauth.client-id=${ENV:ABFS_OAUTH_CLIENT_ID}
+    hive.azure.abfs.oauth.secret=${ENV:ABFS_OAUTH_SECRET}
+    delta.register-table-procedure.enabled=true
+  oracle: |-
+    connector.name=oracle
+    # other service name: SECDEVL002.edwardjones.com
+    connection-url=jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=xxxxx.edj.devjones.com)(PORT=1550))(CONNECT_DATA=(SERVICE_NAME=xxxxx.edwardjones.com)))
+    #connection-url=${ENV:ORACLE_URL}    
+    connection-user=${ENV:ORACLE_USERNAME}
+    connection-password=${ENV:ORACLE_PASSWORD}
+    unsupported-type-handling=CONVERT_TO_VARCHAR
+    #redirection.config-source=SERVICE
+    #cache-service.uri=http://cache:8180
+    oracle.parallelism-type=PARTITIONS
+    oracle.parallel.max-splits-per-scan=16
+    #adding Below lines as per the default Oracle documentation ###
+    oracle.connection-pool.max-size=30
+    oracle.connection-pool.min-size=1
+    oracle.connection-pool.inactive-timeout=20m
+    auth-to-local.config-file=etc/auth-to-local-rules.json
+    auth-to-local.refresh-period=10m
+    oracle.impersonation.enabled=true
+
+  snowflake: |-
+    connector.name=snowflake_parallel
+    #connector.name=snowflake_jdbc
+    connection-url=jdbc:snowflake://xxxxx.privatelink.snowflakecomputing.com
+    connection-user=${ENV:SNOWFLAKE_USERNAME}
+    connection-password=${ENV:SNOWFLAKE_PASSWORD}
+    snowflake.warehouse=COMPUTE_WH
+    snowflake.database=SAMPLE_DATA
+    join-pushdown.enabled=true
+    snowflake.database-prefix-for-schema.enabled=true
+  hive: |
+    connector.name=hive
+    hive.metastore.uri=thrift://hive:9083
+    hive.metastore-cache-ttl=30m
+    hive.metastore-cache-maximum-size=100000
+    hive.file-status-cache-expire-time=30m
+    # hive.file-status-cache.max-retained-size=1000000 # deprecated
+    #hive.security=allow-all
+    hive.security=starburst
+    hive.metastore-refresh-interval=5m
+    materialized-views.enabled=true
+    cache-service.uri=http://coordinator:8180
+    redirection.config-source=SERVICE
+    materialized-views.namespace=hive_views
+    materialized-views.storage-schema=views_cache_storage
+    materialized-views.allow-run-as-invoker=true
+    hive.azure.abfs.oauth.endpoint=${ENV:ABFS_OAUTH_ENDPOINT}
+    hive.azure.abfs.oauth.client-id=${ENV:ABFS_OAUTH_CLIENT_ID}
+    hive.azure.abfs.oauth.secret=${ENV:ABFS_OAUTH_SECRET}
+
+  postgres: |-
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://${ENV:INSIGHTS_PSQL_URL}:5432/postgress
+    connection-user=${ENV:INSIGHTS_PSQL_USERNAME}
+    connection-password=${ENV:INSIGHTS_PSQL_PASSWORD} 
+  redirection: |-
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://${ENV:INSIGHTS_PSQL_URL}:5432/cache
+    connection-user=${ENV:INSIGHTS_PSQL_USERNAME}
+    connection-password=${ENV:INSIGHTS_PSQL_PASSWORD} 
+  ########### Data bricks unity catalog config starts ###############
+  deltalake_unity: |
+    connector.name=delta_lake
+    hive.metastore=unity
+    delta.security=read_only
+    delta.metastore.unity.catalog-name=${ENV:UNITY_CATALOG_NAME}
+    delta.metastore.unity.access-token=${ENV:UNITY_ACCESS_TOKEN}
+    delta.metastore.unity.host=${ENV:UNITY_HOST}
+    hive.azure.abfs.oauth.endpoint=${ENV:ABFS_OAUTH_ENDPOINT}
+    hive.azure.abfs.oauth.client-id=${ENV:ABFS_OAUTH_CLIENT_ID}
+    hive.azure.abfs.oauth.secret=${ENV:ABFS_OAUTH_SECRET}
+  ########### Data bricks unity catalog config ends ###############

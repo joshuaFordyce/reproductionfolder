@@ -1,0 +1,92 @@
+# 1. Replace <your_dbs_endpoint> with your RDS instance endpoint 
+#    (AWS ex. kyle-payne-bootcamp.cs8j7iukogcy.us-east-2.rds.amazonaws.com)
+#    (Azure ex. kyle-payne-bootcamp.postgres.database.azure.com)
+
+expose:
+  type: "loadBalancer"
+  loadBalancer:
+    name: "ranger"
+    ports:
+      http:
+        port: 6080
+# If you want the LB to have an internal IP and not a public facing one remove the comment below for the
+#  annoticatios line and the line for your cloud.
+#    annotations: 
+#      service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+#      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+#      networking.gke.io/load-balancer-type: "Internal"
+
+# This affinity will ensure Ranger is deployed in the base node group.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: apps
+          operator: In
+          values: 
+          - base
+
+# The tollerance in this YAML is specifically for Azure so it could be removed or commented out
+#    for other clouds. However, it also won't hurt to leave since it is just saying to allow somethign
+#    if a taint exists and when it doesn't the tollerance does nothing.
+tolerations:
+  - key: "kubernetes.azure.com/scalesetpriority"
+    operator: "Equal"
+    value: "spot"
+    effect: "NoSchedule"
+
+admin:
+  passwords:
+    admin: RangerPassword1
+    keyadmin: KeyAdminPassword1
+    service: StarburstServicePassword1
+    tagsync: TagSyncPassword1
+    usersync: UserSyncPassword1
+  port: 6080
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: 0.5
+    limits:
+      memory: "1Gi"
+      cpu: 1
+  securityContext: {}
+  serviceUser: starburst_service
+  truststore:
+    password: null
+    secret: null
+
+database:
+  external:
+    databaseName: eks_ranger
+    databasePassword: StarburstR0ckss!
+    databaseRootPassword: StarburstR0cks!
+    databaseRootUser: postgres
+    databaseUser: postgres
+    host: joshua-fordyce-bootcamp.cs8j7iukogcy.us-east-2.rds.amazonaws.com
+    port: 5432
+    tls:
+      enabled: false
+  type: external  
+
+datasources:
+  - name: starburst-enterprise
+    host: coordinator
+    port: 8080
+    username: starburst_service
+    password: St4rburstR0cks!
+
+usersync:
+  enabled: false
+  name: "ranger_usersync"
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: 0.5
+    limits:
+      memory: "1Gi"
+      cpu: 1
+  env:
+
+initFile: files/initFile.sh

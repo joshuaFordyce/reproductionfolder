@@ -1,0 +1,16 @@
+{
+    "defaultGracePeriod": "5m",
+    "defaultMaxImportDuration": "5m",
+    "defaultCacheCatalog": "hive",
+    "defaultCacheSchema": "cache",
+    "rules": [
+        {
+            "catalogName": "bootcamp",
+            "schemaName": "public",
+            "tableName": "orders",
+            "refreshInterval": "24h",
+            "cacheCatalog": "hive",
+            "cacheSchema": "cache"
+        }
+    ]
+}

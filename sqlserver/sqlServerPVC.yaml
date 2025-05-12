@@ -1,0 +1,22 @@
+apiversion: v1
+kind: PersistentVolume
+metadata:
+  name: mssql-pv-volume
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 20Gi
+  accessModes:
+  path: "/mnt/data"
+---   
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi # Adjust storage as needed
+    
